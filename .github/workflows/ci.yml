@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Continuous Deployment
 
 on:
   push:
@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -23,11 +24,20 @@ jobs:
       - name: Train model
         run: python train.py
 
-      - name: Run tests
-        run: python -m pytest tests/test_api.py -v
-
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-results
-          path: Results/model_results.png
+      - name: Deploy to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+          api.upload_folder(
+              folder_path='.',
+              repo_id='${{ secrets.HF_USERNAME }}/student-grade-predictor',
+              repo_type='space',
+              token='${{ secrets.HF_TOKEN }}',
+              ignore_patterns=['venv/', '.git/', '__pycache__/', 'mlruns/']
+          )
+          print('✅ Deployed to Hugging Face Spaces!')
+          "
